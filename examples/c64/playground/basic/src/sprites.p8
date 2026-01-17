@@ -55,6 +55,8 @@ colors {
 }
 
 irq {
+    ; Pre-calculated bitmasks for MSIGX register (one per sprite)
+    ubyte[] sprite_bitmasks = [$01, $02, $04, $08, $10, $20, $40, $80]
 
     sub irqhandler() -> bool {
         c64.SCROLY = %00010011             ; 24 row mode, preparing for border opening
@@ -70,7 +72,7 @@ irq {
             ubyte @zp r = math.rnd()
             if r>215 {
                 ; move right
-                bitmask = 1 << (i >> 1)
+                bitmask = sprite_bitmasks[i >> 1]
                 lx = c64.SPXY[i]
                 if lx==255 {
                     c64.SPXY[i] = 0
@@ -80,7 +82,7 @@ irq {
                 }
             } else if r<40 {
                 ; move left
-                bitmask = 1 << (i >> 1)
+                bitmask = sprite_bitmasks[i >> 1]
                 lx = c64.SPXY[i]
                 if (c64.MSIGX & bitmask) != 0 and lx == 0 {
                     c64.MSIGX &= ~bitmask
