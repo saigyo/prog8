@@ -9,38 +9,93 @@ main {
 
         txt.print("balloon sprites!\n...we are all floating...\nborders are open too\n")
 
+        ubyte[] spritecolors = [
+                    colors.white, colors.red, colors.cyan, colors.purple,
+                    colors.yellow, colors.orange, colors.gray, colors.brown
+                ]
+
         ubyte @zp i
         for i in 0 to 7 {
-            c64.set_sprite_ptr(i, &spritedata.balloonsprite)           ; alternatively, set directly:  c64.SPRPTR[i] = $0a00 / 64
+            ; c64.set_sprite_ptr(i, &spritedata.balloonsprite)           ; alternatively, set directly:  c64.SPRPTR[i] = $0a00 / 64
+            c64.SPRPTR[i] = lsb(&spritedata.balloonsprite as uword / 64)
             c64.SPXY[i*2] = 60+22*i
             c64.SPXY[i*2+1] = math.rnd()
+            c64.SPCOL[i] = spritecolors[i]
         }
 
         c64.SPENA = 255       ; enable all sprites
+
+        c64.XXPAND = 255      ; expand all sprites
+        c64.YXPAND = 255
+
+        c64.EXTCOL = colors.blue
+        c64.BGCOL0 = colors.blue
+
         sys.set_rasterirq(&irq.irqhandler, 248)         ; trigger irq just above bottom border line
     }
 }
 
+colors {
+    const ubyte black = 0
+    const ubyte white = 1
+    const ubyte red = 2
+    const ubyte cyan = 3
+    const ubyte purple = 4
+    const ubyte green = 5
+    const ubyte blue = 6
+    const ubyte yellow = 7
+    const ubyte orange = 8
+    const ubyte brown = 9
+    const ubyte lightred = 10
+    const ubyte darkgray = 11
+    const ubyte gray = 12
+    const ubyte lightgreen = 13
+    const ubyte lightblue = 14
+    const ubyte lightgray = 15
+}
 
 irq {
 
     sub irqhandler() -> bool {
-        c64.SCROLY = 19             ; 24 row mode, preparing for border opening
-        c64.EXTCOL--
+        c64.SCROLY = %00010011             ; 24 row mode, preparing for border opening
+        c64.EXTCOL = colors.green
+        c64.BGCOL0 = colors.green
 
         ; float up & wobble horizontally
         ubyte @zp i
+        ubyte @zp p
+        ubyte @zp hx
+        ubyte @zp lx
         for i in 0 to 14 step 2 {
             c64.SPXY[i+1]--
             ubyte @zp r = math.rnd()
-            if r>200
-                c64.SPXY[i]++
-            else if r<40
-                c64.SPXY[i]--
+            if r>215 {
+                p = i >> 1
+                lx = c64.SPXY[i]
+                hx = c64.MSIGX & 1 << p
+                if lx==255 {
+                    c64.SPXY[i] = 0
+                    c64.MSIGX |= 1 << p
+                } else if hx == 0 or lx < 88 {
+                    c64.SPXY[i]++
+                }
+            } else if r<40 {
+                p = i >> 1
+                lx = c64.SPXY[i]
+                hx = c64.MSIGX & 1 << p
+                if hx != 0 and lx == 0 {
+                    c64.MSIGX &= ~(1 << p)
+                    c64.SPXY[i] = 255
+                } else if hx != 0 or lx > 25 {
+                    c64.SPXY[i]--
+                }
+            }
         }
 
-        c64.EXTCOL++
-        c64.SCROLY = 27            ; 25 row mode, border is open
+        c64.EXTCOL = colors.blue
+        c64.BGCOL0 = colors.blue
+
+        c64.SCROLY = %00011011            ; 25 row mode, border is open
         return true
     }
 
