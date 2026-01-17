@@ -63,30 +63,29 @@ irq {
 
         ; float up & wobble horizontally
         ubyte @zp i
-        ubyte @zp p
-        ubyte @zp hx
+        ubyte @zp bitmask
         ubyte @zp lx
         for i in 0 to 14 step 2 {
             c64.SPXY[i+1]--
             ubyte @zp r = math.rnd()
             if r>215 {
-                p = i >> 1
+                ; move right
+                bitmask = 1 << (i >> 1)
                 lx = c64.SPXY[i]
-                hx = c64.MSIGX & 1 << p
                 if lx==255 {
                     c64.SPXY[i] = 0
-                    c64.MSIGX |= 1 << p
-                } else if hx == 0 or lx < 88 {
+                    c64.MSIGX |= bitmask
+                } else if (c64.MSIGX & bitmask) == 0 or lx < 88 {
                     c64.SPXY[i]++
                 }
             } else if r<40 {
-                p = i >> 1
+                ; move left
+                bitmask = 1 << (i >> 1)
                 lx = c64.SPXY[i]
-                hx = c64.MSIGX & 1 << p
-                if hx != 0 and lx == 0 {
-                    c64.MSIGX &= ~(1 << p)
+                if (c64.MSIGX & bitmask) != 0 and lx == 0 {
+                    c64.MSIGX &= ~bitmask
                     c64.SPXY[i] = 255
-                } else if hx != 0 or lx > 25 {
+                } else if (c64.MSIGX & bitmask) != 0 or lx > 25 {
                     c64.SPXY[i]--
                 }
             }
